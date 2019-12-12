@@ -1,4 +1,8 @@
-.dockerignore
-Docker.build
-Docker.output/**
-Dockerfile
+/Dockerfile
+/Dockerfile.build
+/Dockerfile.buildmany
+/Dockerfile.out
+
+/.dockerignore
+/.git
+/.gitignore

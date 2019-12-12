@@ -5,13 +5,13 @@ Get source::
 
     # Get source from https://downloads.mariadb.org/connector-odbc/
     # and rename to maodbc_VERSION.orig.tar.gz; e.g.:
-    wget -O maodbc_3.0.6.orig.tar.gz \
-      https://downloads.mariadb.com/Connectors/odbc/connector-odbc-3.0.6/mariadb-connector-odbc-3.0.6-ga-src.tar.gz
-    # 3.0.6 has md5sum 6e16ed523732dbf3df6bc0ece3aa73de
+    wget -O maodbc_3.1.5.orig.tar.gz \
+      https://downloads.mariadb.com/Connectors/odbc/connector-odbc-3.1.5/mariadb-connector-odbc-3.1.5-ga-src.tar.gz
+    # 3.1.5 has md5sum b59e048596cbd131f2d94c4cecbc2684
 
     # Extract:
-    tar zxf maodbc_3.0.6.orig.tar.gz
-    cd mariadb-connector-odbc-3.0.6-ga-src
+    tar zxf maodbc_3.1.5.orig.tar.gz
+    cd mariadb-connector-odbc-3.1.5-ga-src
 
 Setup ``debian/`` dir::
 
@@ -27,9 +27,9 @@ Docker build
 
 Or you can just do::
 
-    ./Docker.build
+    ./Dockerfile.build
 
-And it will create the build files in ``Docker.output/``.
+And it will create the build files in ``Dockerfile.out/``.
 
 
 TODO

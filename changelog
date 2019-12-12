@@ -1,3 +1,12 @@
+maodbc (3.1.5-0osso1+deb9) stretch; urgency=low
+
+  * New upstream release 3.1.5.
+  * Add docker build for multiple OSes.
+  * See upstream-changes/CHANGES-3.0.6-to-3.1.5-sans-plumbing.txt for changes.
+  * Removed obsolete patch.
+
+ -- Walter Doekes (work) <wjdoekes@osso.nl>  Thu, 12 Dec 2019 17:14:26 +0100
+
 maodbc (3.0.6-0osso1+deb9) stretch; urgency=low
 
   * New upstream release 3.0.6.

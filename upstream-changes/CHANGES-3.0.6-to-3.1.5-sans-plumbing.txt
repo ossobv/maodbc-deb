@@ -1,0 +1,640 @@
+commit 45d08689518886352921ffb4783991f68f3f0492
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Sep 7 01:24:15 2018 +0200
+
+    ODBC-177 The fix and the testcase.
+    
+    In case of SP call, if one of its queries resulted in error, connector
+    would not return the error on corresponding result fetch, but would
+    return it as SQL_NO_DATA.
+    Moreover, instead of last result with SP execution status, connector
+    would also do the same. Thus, for example, application could not get
+    affected rows count. That requires separate bug report, which I'll later
+    add.
+    Had to change some testcases, that did not expect last result with SP execution status, accordingly.
+
+commit 0960f5d04facbd95bc0edacb416413d62e833471
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Sep 7 19:51:38 2018 +0200
+
+    ODBC-178 Optimization for some long queries
+    
+    Optimization only used for queries longer than 32K. And it skips most of
+    parsing job in case if connector is sure that the query is not a multistatemnt and
+    does not have parameters.
+
+commit 548db719eb61d585b3df4f7fd31a59f7cb8fd435
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Tue Sep 11 20:17:54 2018 +0200
+
+    ODBC-181 The fix + the testcase
+    
+    The crash or error could be caused by error in the (client side) query parsing in case of dash was followed by a string containing newline character and semicolon
+
+commit 79efd0e899773be8b8797633880d9d7e2839d091
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Sep 12 11:34:19 2018 +0200
+
+    ODBC-182 The fix and the testcase
+    
+    If parameter SQL_TIME field was bound as SQL_C_TIMESTAMP, and day field
+    was not zero, the inserted time value would be different from the value
+    in time fields of the parameter(server would add total number of hours in those days to the time). The patch makes connector to copy only time fields for the parameter.
+    Also, the patch enforces time and date validity checks for such parameters, as the specs require.
+
+commit bfb78c0c1698278f81bd4c505a653e4bf4d745f6
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Sep 13 17:48:26 2018 +0200
+
+    ODBC-169 The fix and the testcase.
+    
+    If data was fetched using SQLGetData, with batches of SELECTS that would fail like described int the bug - empty values or even crashes. The reason was that in such case one of structures involved in data fetching was not reset on move to the new resultset. That caused aforementioned errors.
+    Also the patch fixes SQLRowsCount for batches of upserts or other
+    statements generation affected rows count.
+    Removed one unused funxtion, which also relied on C/C internals
+
+commit a9e55d15e1259a711e124203dea0caf3b5f013c9
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Tue Sep 18 17:58:38 2018 +0200
+
+    Change requested in ODBC-152 - SQL_DATA_TYPE value
+    
+    casted to SIGNED in SQLColumns query. Other wise its type(returned by
+    server) is MEDIUM_BLOB. Even though at the moment it's not quite clear
+    what is the problem, the change looks reasonable.
+
+commit 768b94f1d2f690d1a5bbe9bfe84af033acc27d3f
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Sep 20 15:58:05 2018 +0200
+
+    ODBC-185 The fix and the testcase.
+    
+    Connector returns W types if Unicode part of API used(to connect).
+    Also uncommented/un-skipped 2 tests. One required some changes to
+    build, and I am not sure why was skipped the other one.
+
+commit fa081fb5c50fef5f2db6151ec55ec80f9a3069ca
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Sep 20 15:58:05 2018 +0200
+
+    ODBC-186 The fix and testcases
+    
+    This is fixes several issues with SQLColumns and SQLProcedureColumns,
+    as they share good part of SQL queries. Most of issues are rather minor.
+    Here are their description from the JIRA.
+    If SP parameter is described as double(m,n), connector will return its type as SQL_DOUBLE, and column size as m. While specs says that column size for SQL_DOUBLE is fixed and is 15.
+    Connector should either return the type as SQL_DECIMAL, or return column size 15. The similar problem exists for float fields as well.
+    BUFFER_LENGTH for decimal field does not consider if the field unsigned
+    For SQLProcedureColumns NUM_PREC_RADIX is always 10, while it should be NULL for types, where it is not applicable, i.e. for non-numeric types
+    BUFFER_LENGTH for character types contains incorrect data. Currently this is max number of bytes for encoding of string in charset used for storing data on server, while that has to be in the charset used for transferring data to the client.
+    SQLColumns returns incorrect SQL_DATETIME_SUB - SQL_TYPE_DATE instead of SQL_CODE_DATE, etc. SQLProceduresColumns returns NULL for all data types, and also it returns incorrect inconcise type for datetime parameters - should be SQL_DATETIME for all date/time types
+    Both functions would return NULL in COLUMN_SIZE, and would not return correct value in BUFFER_LENGTH for MySQL 'year' type
+    SQLProcedureColumns should return empty string in COLUMN_NAME for procedure columns that does not have name, e.g. for functions's return value. It returns NULL instead
+      Also both functions did not do difference between NULL and empty string parameters. Specs says, that "" has different meaning for catalog/schema name. Also CatalogName cannot be string search pattern, while it is allowed by connector.
+
+commit d49df3dfaa436418d8378734eaca143010b7bc44
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Mon Oct 1 14:31:21 2018 +0200
+
+    ODBC-152 The fix and the testcase
+    
+    The fix has been accidenatally lost in previous commit. In case if
+    SQL_DATA_TYPE value is fetched in bound buffer, the truncation error.
+    The fix casting column in the query to SIGNED
+
+commit bc32db692fc58f37d2d0a6dd41326e7cb2eb5930
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Oct 3 00:41:59 2018 +0200
+
+    ODBC-70 Last part. Caring of 0-date in the string
+    
+    Enforcing of constraint on date/time values in case if they passed as a
+    string. Enhanced testcase for ODBC-70
+    Fixed calculation of SQL type form concise type - it didn't consider
+    ODBCv3 types.
+
+commit 077f001b89145a7b2007ab35598286524be818be
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Tue Oct 9 00:36:07 2018 +0200
+
+    ODBC-23 Packaging C/C auth plugins.
+    
+    And settting path to those installed plugins as default plugins location
+    for the connector.
+
+commit 9ed4a7a244f4574b31013bfbe5e46a5a99b3bd61
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Oct 10 00:43:37 2018 +0200
+
+    ODBC-190 Removing C/C auth plugins from packages
+
+commit 894d718b7dbc45f399e0fd328d4b883e3b36218b
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Oct 11 00:45:02 2018 +0200
+
+    ODBC-189 Made install lib dir name configurable
+    
+    That will allow to build packages with required directory name.
+
+commit 63fcf159de63feef3ec3c5b4dbed392b51ecf17e
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Sat Oct 13 00:03:03 2018 +0200
+
+    ODBC-186 Improved SQLProcedureColumns testcase
+    
+    It would fail if connection charset was not a single-byte
+
+commit 1e3184fa196d79dfb03884b0fe0d70d006338b06
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Oct 18 00:52:16 2018 +0200
+
+    ODBC-188 Fixe and testcases
+    
+    The main issue was incorrect processing of connect string with
+    NULL-separated key=value pairs. But also there were found and fixed many
+    issuse with ConfigDSN use. Like no dialods/messageboxes shoulb showed if
+    parent window handle isn't provided. Extended dsn_test to test ConfigDSN
+    more thoroughly in interactive mode.
+
+commit 351c1aac6099a868e8d5eb561ae38fefe3116b03
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Oct 31 15:13:35 2018 +0100
+
+    ODBC-192 The fix and the testcase + ODBC-194 test
+    
+    The problem was incorrect buffer address calculation for TIMESTAMP type in case of row-based columns binding. That caused error in ADO, and could cause a crash.
+    
+    Also commit contains testcase for ODBC-194 with problematic place
+    commented out.
+    
+    Also some possible issues are fixed along the way. Like caring of the
+    case when value buffer is not provided for a field. Or using if
+    Indicator and StrLen (for the column) have different buffers.
+
+commit ae8467a8b729b4014bf14a6b5b05325e98cd03a7
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Mon Nov 5 23:44:43 2018 +0100
+
+    ODBC-194 and ODBC-197 - fixes and testcases
+    
+    Connector would not return NULL for 0000-00-00 datetime values in case
+    of SQLGetData call, while doing that in SQLFetch.
+    Also it would not do that ifn case of empty string conversion to
+    date/time types.
+    If time field fetched as timestamp type, fractional part was set to 0.
+    
+    The patch makes SQLFetch and SQLGetData to use the same function to copy
+    data to application buffers and process erroneous values.
+
+commit a94af400a81245e9f278afba850f99b3dd7e8b30
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Nov 9 01:07:26 2018 +0100
+
+    ODBC-43, ODBC-198 and ODBC-199 fixes.
+    
+    These are all date/time types related issues
+    
+    Correct errors, fractional part, conversions.
+    ODBC-43(overflow errors detection and reporting) was partly done earlier.
+    ODBC-198 is mostly fix in C/C, but added similar changes to similar
+    function in c/odbc and added testcase.
+
+commit bb8c6b876a1de4dae995334d954f38952253add0
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Nov 14 23:35:54 2018 +0100
+
+    ODBC-193 Enabling build with iODBC
+
+commit 07381cc2385d5eec94fa7b1b39dd49e8b9635cd6
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Nov 16 12:06:49 2018 +0100
+
+    Version bump -> 3.0.8 + new logo in README.md
+
+commit 12cec4bf26b45b2790553e30edbdb7f011f71f47
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Nov 15 17:17:17 2018 +0100
+
+    ODBC-193 Enabling connect and most of operations
+    
+    SQLWCHAR encoding is depending on DM or on the size of SQLWCHAR. It's either utf16(UnixODBC) or utf32(iODBC). Since iconv needs to know if utf32 le or be, defining charset info struct for le order of bytes. More like a hack to make mariadb_coonvert_string to give iconv correct encoding name.
+    Fixed failing testcase.
+
+commit f1e0cd2c76b8b509862ebe29ad64892c77ec3008
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Nov 30 01:16:37 2018 +0100
+
+    ODBC-204 SQLGetData did not return empty wide string
+
+commit 20e0a501392c660467b013c4ef632b227035bdc3
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Sun Dec 2 22:31:37 2018 +0100
+
+    ODBC-203 The fix and the testcase.
+    
+    The problem was occured only with data fetched as SQL_C_WCHAR. That
+    happened because for statemnt handdles after 1st one there wasn't STMT_ATTR_UPDATE_MAX_LENGTH attribute set, and getting data as a widestring depends on max_length.
+    Also changed similar ODBC-169 testcase to test data values, and not only
+    column and row count.
+    Added to test framework optional automatic unicode connection(with
+    SQLDriverConnectW) and statement allocation in that connection.
+
+commit cb5b7cee9b7c9703d8275dc7d1aeb480ce1c7278
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Mon Dec 10 18:16:41 2018 +0100
+
+    ODBC-205 It was a regression, thus no test.
+    
+    The patch moves string to date/time types conversion from C/C on C/ODBC
+    side to better meet ODBC requirements.
+
+commit 3a231701025a49b99c640c3e71bd1f3827332889
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Dec 14 01:27:19 2018 +0100
+
+    ODBC-193 Mores tests changes for iOdbc
+
+commit 5d5ec8e733fac1b5702c2f8e29d69be76d131e8c
+Author: Tom Hughes <tom@compton.nu>
+Date:   Wed Oct 17 12:39:33 2018 +0100
+
+    Add SQL_OUTER_JOINS support to SQLGetInfo
+    
+    This is an older attribute that is largely superseded by
+    the newer SQL_OJ_CAPABILITIES attribute but some software
+    checks it first and only uses SQL_OJ_CAPABILITIES to get
+    more details if SQL_OUTER_JOINS says they are supported.
+
+commit 636d21cf4f19a5ba23e6bb1b99cd1816c1c25147
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Dec 21 00:45:35 2018 +0100
+
+    ODBC-206 and ODBC-193 utf8mb4 as default charset
+    
+    More tests fixes for iODBC
+
+commit 7b463c1c9ec6002334b93fd0136f54459e01972d
+Author: Joshua Colvin <joshua.colvin@ticketmaster.com>
+Date:   Thu Dec 20 16:42:02 2018 -0700
+
+    ODBC-207 Fix multi-statement param realloc
+    
+    Example use case:
+    Prepare the following SQL statement:
+    "INSERT INTO tbl (a,b) VALUES (?,?); SELECT 1 FROM tbl WHERE c = ?"
+    First execution of prepared statement will work, second execution will segfault or cause memory corruption.
+
+commit 976a667073579cc26fdc1ff79b38d2ecab9b9002
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Jan 11 00:21:42 2019 +0100
+
+    Fix of connector and testcases to make them work
+    
+    everywhere(Windows, UnixODBC, Travis, Appveyor, iOdbc) - not guearantee
+    that it really does it, but approaches that goal for sure.
+    Fix of bug in conversion of utf8 to utf16 if utf8string contains character(s) resquiring 2 SQLWCHAR units in utf16 encoding.
+    Change of SQL_MAX_COLUMN_NAME_LEN to be 255(256-1), since that is
+    effectively the longest name len that c/c provides
+
+commit 646803f9ddbf14b9d688e806ea06a63ecf124552
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Jan 23 21:28:59 2019 +0100
+
+    ODBC-213 The fix and the testcase
+    
+    SQL_DESC_PARAMETER_TYPE was returned in wrong type - integer instead of
+    small integer. Also, application could get not only from Ipd descriptor,
+    but also from Ird.
+
+commit 07f6b00a06b549210402b499db88f5de285985e5
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Jan 23 23:19:34 2019 +0100
+
+    ODBC-212 The fix and the testcase
+    
+    Fixes default parameter in/out type in case of SQLBindParam mapping. Mainly needed for iOdbc on OSX.
+
+commit 8d22a846fb98b11eef0a2dbb8ee49c89827be23c
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Feb 28 23:41:21 2019 +0100
+
+    ODBC-216 The fix and the testcase.
+    
+    Connector returned wrong value for SQL_DESC_FIXED_PREC_SCALE. In the
+    report it was going about bigint type, but in fact for more types
+    SQL_TRUE was returned, where it shouldn't. At least in analogy with
+    bigint. Moreover, since defininition of SQL_DESC_FIXED_PREC_SCALE is not
+    super clear, I checked what SQL Server driver returns for different
+    types. As MS's creation, I guess it can be used for reference if specs
+    are ambigous. Only (small)money types SQL_TRUE is returned. MariaDB does not
+    have it. And for types that has counerparts in MariaDB, SQL_FALSE is
+    always returned. Thus, i made SQL_FALSE default value for all types for
+    SQL_DESC_FIXED_PREC_SCALE field.
+
+commit 35f9e5d1ff8c90ecce0176e5e018e4d819c3c5fd
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Mar 13 20:55:57 2019 +0100
+
+    ODBC-219 The fix and the testcase.
+    
+    The bug boils down to not reporting correct columns count in case of a query
+    with multiple results(stored procedure or statements batch) if the result
+    with affected rows count followed a resultset.
+    In case of stored procedure(like in the bug report) this is always the case, if
+    SP returns a result set.
+    The bug occured becaule IRD was not reset in the SQLMoreResults in the
+    described case.
+    Fixed mistake in previous commit(for ODBC-216) - lost statement handler
+    reinitialization in one place.
+    Changed tests framework to print test result only after Stmt handler
+    provided by framework to tests, reinitialized.
+
+commit 553c71f4925bce219086eda49267e6fae84320c9
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Sun Mar 17 23:25:49 2019 +0100
+
+    ODBC-231 The fix and the testcase.
+    
+    The bug is rather in SSIS, I would say. It binds column size as signed
+    int, but the value for LONGTEXT is max unsigned int. Connector was
+    returning truncation error on the row fetch. And that is probably not
+    quite right anyway, from everything I read is specs. Anyway, the patch
+    makes connector not to return truncation error in case if truncation is
+    caused solely by sign-ness of the field/buffer.
+
+commit 1aad919b578fd6259f26c7c66dbcb47c4c9e4692
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Mon Mar 18 14:57:46 2019 +0100
+
+    ODBC-234 The fix only - not new tests needed
+    
+    ODBC-233 will enabling tests for this bug
+    Also fixed one test for ODBC-233 in datetime.
+
+commit 21864d5a9b6f92af4d96b7c79e1e020554c01b01
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Tue Mar 19 22:13:05 2019 +0100
+
+    ODBC-229 Added option for reading section in my.cnf
+    
+    Connection string option is USE_MYCNF. OPTIONS bit 65536 may also be
+    used.
+    The checkbox for the option has been added to Windows setup dialog. Removed some garbage from rc file along the way
+    Test of the option has been added to connstring.
+
+commit 172c39955fa2f49517c26bc6919c691349a7c912
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Mar 21 15:36:41 2019 +0100
+
+    ODBC-228 Added connection string option TLSVERSION
+    
+    This option can be used to enforce MARIADB_OPT_TLS_VERSION C/C option to
+    limit allowed for the connectgion TLS versions.
+    The value can be either a bitmap, where bit 1 corresponds to TLSv1.1,
+    bit 2 - TLSv1.2, and 4 - to TLSv1.3, or it can be set as combination of
+    string names TLSv1.1, TLSv1.2 and TLSv1.3.
+    Checkbox group has been added to the Windows setup dialog. If no
+    checkboxes checked there means all versions are allowed.
+    The testcase tests only correct connection string parsing/storing
+    The file win/ma_odbc_setup.h has been moved to 'dsn' directory, as there
+    was already the file with the same name, that wasn't used. 'win'
+    directory has been removed, as that was the only file there
+
+commit fb0ac7930ebe112690f568f0e6ce6d92f8a29319
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Mar 21 23:18:47 2019 +0100
+
+    DBC-232 The fix and the testcase
+    
+    The bug boils down to that SQLGetData would crash, if application
+    unbinds result buffers after execution, i.e. calls
+    SQLFreeStmt(SQL_UNBIND). That happened because SQL_UNBIND freed
+    columns metadata along with freen bind buffers. That it shouldn't do.
+
+commit 031e0ac0ea9b30426f67cc98156820dc8c293d04
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Sat Mar 23 16:30:52 2019 +0100
+
+    Making sure SSL options are not empty strings.
+    
+    And not white spaces only. That shouldn't normally happen, as connector
+    trim dsn field values, and does not store empty strings. But better safe
+
+commit adf98aebea79b30a8458e7726d176dc17cc01654
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Mar 29 01:52:56 2019 +0100
+
+    ODBC-223 Added PKG generation with postinstall script
+    
+    cmake on OS X will now generate pkg package of C/ODBC installation. The
+    package will contain postinstall script for registering driver with
+    iODBC.
+    Added small utility program for driver registration with DM. It's
+    included into pkg and run by postinstall
+
+commit 9d1d94b0782c43afeed9887ea93574f34c028acc
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Mon Apr 8 15:30:40 2019 +0200
+
+    ODBC-239 Changed mysql_options calls as it's deprecated
+
+commit 1e633f8ed8145b3837929b188517a3f613dfe645
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Tue Apr 9 00:47:36 2019 +0200
+
+    ODBC-238 Added FORCETLS connection string option
+    
+    It is for enabling of the C/C MYSQL_OPT_SSL_ENFORCE option, which allows
+    to force TLS use
+
+commit 38e42053d862b37aba481e3129f99d670d79485d
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Apr 26 00:12:16 2019 +0200
+
+    ODBC-225(ODBC-244) The fix and updated testcases
+    
+    The driver treated NULL values as empty strings when checked if the call
+    is special case for databases list.
+    Aldo ODBC-245 and ODBC-246
+
+commit 832360fbe6a6aacc8f1ce99d215fa936a0e04a50
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu May 2 20:21:24 2019 +0200
+
+    ODBC-211 The fix and the testcase
+    
+    Also fixed prcision in case of unsigned decimal field and/or with 0
+    scael, octet length and display size calculation.
+
+commit b7bac9b1eab40a90d04abeb227f23d409cb7b4db
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri May 17 01:35:11 2019 +0200
+
+    Added to Dbc handle new mutex to quard lists operations
+    
+    Also fixed one bug in descriptor freeing, when refence to the deleted
+    descriptor was "deleted" from the wrong list in Dbc
+    
+    Skipped with iOdbc on OS X one more check in desc testsuite, since iOdbc
+    crashes there
+
+commit 5fa159737f326aa83b8b618204cb034ce5c17d2a
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Sat Jun 1 18:09:35 2019 +0200
+
+    ODBC-252 Updated build instruction in te BUILD.md
+
+commit 79fb9cb41de237ebf048195933ef96613776d5cf
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Jun 6 21:18:02 2019 +0200
+
+    ODBC-253 The fix and the testcase
+    
+    Added check that if length of the query is shorter, than mininmal
+    possible length of a SQL statement, return syntax error right away.
+    Fixed also local strndup version(for Windows) - it would not create copy
+    of an empty string.
+    Updated C/C to v3.0.10
+
+commit bb8aaf18b4d1dc1e39ebb0a5c52be78ffffd322d
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Jun 13 00:18:59 2019 +0200
+
+    ODBC-254 INSTALL_LIB_SUFFIX is made CACHE, and made
+    
+    plugins to be installed under the same library. Also returned lib64 as
+    libraries destination, if 64b library is built, and there is lib64 in
+    the system. But that may be yet changed back.
+    Returned plugins to the tarballs on linux. Probably was lost in a
+    merge.
+
+commit d8dc34c099df8eb38c95597bc03486d7055a3dc4
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Jun 19 11:09:26 2019 +0200
+
+    ODBC-251 the testcase only + ODBC-210
+    
+    It's not quite clear if we should fix anything with 251, but adding the
+    testcase to have it.
+    Fixed rest of compilation warnings with iOdbc. At some point I've
+    decided it's better to suppress the most common warnings in tests - in
+    iOdbc SQLCHAR is unsigned char, and that caused tons of wranings
+    Paramethrised some OSX packaging files along the way and fixed some
+    cmake some found potential cmake issues.
+
+commit 749d73dfcec1c3c4ce18d5f5a5db964c856aa96e
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Jun 26 23:56:09 2019 +0200
+
+    ODBC-257 and ODBC-258
+    
+    ODBC-257 copy/paste error in the cmake config
+    ODBC-258 introduced INSTALL_DOC_DIR and INSTALL_LICENSE_DIR cmake
+    parameters to make installation paths of docs and license file
+    configurable. Also changed default subdirectoly name for those files from mariadb_connector_odbc to mariadb-connector-odbc
+
+commit 9d2f2c8421477d1d69086a09f5bedf1ae906fb17
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Jul 4 19:27:20 2019 +0200
+
+    ODBC-260 Removed all references to MYSQL internals
+
+commit 925d222af374d9727baf921a994beac24f43c171
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Jul 11 11:49:20 2019 +0200
+
+    ODBC-255 MSI upgrades DSN's to new driver version
+    
+    When driver is upgraded to a version from the new series, i.e. from 3.0
+    to 3.1, DSN's using old version become unusable, since Driver name
+    changes. Commit adds new small program, that is packaged in the MSI
+    installer, and run after the installation process is complete to fix
+    those "hanging" DSN's.
+
+commit 18ee34b7a01ddf9bafbeaff0a5d2940f3c4b05e5
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Jul 25 00:23:16 2019 +0200
+
+    ODBC-261 direct execution could be used for old servers
+
+commit 07bc4115f2f7321529241ce130504913bdc6378a
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Aug 7 14:39:53 2019 +0200
+
+    ODBC-226 SQLMoreResults would not return error
+    
+    if batch was sent via text protocol, and a statement in the batch resulted in an error.
+    Since MariaDB stops processing the batchin such case, specs say
+    SQLMoreResults should return SQL_ERROR(otherwise should be
+    SQL_SUCCESS_WITH INFO)
+    Added OS X build on travis to "allow failures" section, while it's not
+    clear how to fix it atm, and "manual" build works
+
+commit 5cb835ec054826fafd6d4ab1a70971045475ff59
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Wed Aug 7 16:18:03 2019 +0200
+
+    ODBC-262 Added client_ed25519 pluginto msi and pkg
+
+commit f2129e5430cb3183b06a0a7b24aa223f2cc8fe69
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Thu Sep 12 19:44:29 2019 +0200
+
+    ODBC-241 Added SERVERKEY connection option for the
+    
+    name of a file with server public key for use with caching_sha2_password
+    authentication plugin. The correcponding field has been added to the
+    Windows setup dialog
+
+commit df066bd89ab3bcbc410544e572dfc5368a415b48
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Sep 13 00:15:22 2019 +0200
+
+    ODBC-240 Added use of Peer Fingerprint and FP list
+    
+    Changed connection string option names to be TLSPEERFP and
+    TLSPEERFPLIST, respectively. While leaved old names(SSLFP and SSLFPLIST) as aliases.
+    Added input fields to the setup dialog on Windows.
+    Previous commit missed memory freeing for the new field - added here.
+
+commit 18ea7d4d73313fa79a825aca9b42fac40e2f207b
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Fri Sep 13 17:55:41 2019 +0200
+
+    ODBC-87 Db combobox lost the selection after Test
+    
+    Connection test in the setup dialog triggers reading of the database(and charset) list, and populating of the combobox. But the current DB selection was not correctly restored after that.
+
+commit c921b500650eca535010f12e0d83417d2ef915ec
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Tue Sep 17 12:20:08 2019 +0200
+
+    ODBC-264 Windows and OSX build fix.
+    
+    C/C is updated to 3.1.4
+    For OSX added workaround for typo(aka bug) in c/c preventing linking of
+    one of auth plugins. Plus solved some rather old issues in pkg cmake for
+    the case, when src and build directories are different
+
+commit f098cc97e0bc402598a7e5b5de6d799d1fce61ec
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Tue Sep 24 17:28:23 2019 +0200
+
+    ODBC-196 Optimization for FORWARD_ONLY cursors
+    
+    in case of rows array fetch. Some optimization are done for other
+    cursors as well - i.e. for static and dynamic. Especially if static
+    navigated forward.
+    Removed some workaround for the previous release build, and updated
+    C/C sub-project.
+
+commit 1317196159ff80752e68cb0a1cf2dcc32b0f8ce9
+Author: Lawrin Novitsky <lawrin.novitsky@mariadb.com>
+Date:   Sun Oct 13 23:43:43 2019 +0200
+
+    ODBC-267 Cleaned setup library build and linking
+    
+    Connection test now uses ODBC API, and not driver internals. Driver is
+    not linked directly. Removed dependencies on the C/C as well DSN info from the dialog is passed to the
+    connection API in the string, and not in the internal DSN structure.
+    Added connection string to the connetion test result window.

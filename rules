@@ -4,7 +4,7 @@ buildversion := $(shell sed -e '1!d;s/.*(//;s/).*//' debian/changelog)
 upversion := $(shell echo "$(buildversion)" | sed -e 's/-.*//')
 
 MARIADB_CONNECTOR_C := mariadb-connector-c-$(upversion)-src.tar.gz
-MARIADB_CONNECTOR_C_MD5 := 81c85d8fc696ee65046c0d29b67201be
+MARIADB_CONNECTOR_C_MD5 := 6b2aae0738d3d5fed2aae272b6e8c19f
 MARIADB_CONNECTOR_C_URL := https://downloads.mariadb.com/Connectors/c/connector-c-$(upversion)/$(MARIADB_CONNECTOR_C)
 
 DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
@@ -49,7 +49,7 @@ override_dh_auto_configure: libmariadb
 
 override_dh_auto_install:
 	dh_auto_install -- DESTDIR=$(CURDIR)/debian/tmp
-	mv $(CURDIR)/debian/tmp/usr/share/doc/mariadb_connector_odbc $(CURDIR)/debian/tmp/usr/share/doc/libmaodbc
+	mv $(CURDIR)/debian/tmp/usr/share/doc/mariadb-connector-odbc $(CURDIR)/debian/tmp/usr/share/doc/libmaodbc
 	mkdir -p $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/odbc
 	mv $(CURDIR)/debian/tmp/usr/lib/libmaodbc.so $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/odbc/
 	ln -s libmaodbc.so $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/odbc/libmyodbc.so

@@ -3,7 +3,7 @@ Section: libs
 Priority: optional
 Maintainer: Walter Doekes (work) <wjdoekes@osso.nl>
 Standards-Version: 3.9.2
-Build-Depends: debhelper (>= 8.9.4), unixodbc-dev (>= 2.2.11), cmake (>= 3.7)
+Build-Depends: debhelper (>= 8.9.4), libssl-dev, unixodbc-dev (>= 2.2.11), cmake (>= 3.7)
 Homepage: https://downloads.mariadb.org/connector-odbc/
 
 Package: libmaodbc
