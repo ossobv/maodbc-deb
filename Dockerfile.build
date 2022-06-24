@@ -47,7 +47,7 @@ docker build \
     -t $dockversion \
     -f Dockerfile \
     . || ret=$?
-if test ${ret:-0} != 0; then
+if test ${ret:-0} -ne 0; then
     echo "fail" >&2
     exit $ret
 fi
