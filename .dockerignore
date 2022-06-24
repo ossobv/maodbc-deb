@@ -3,6 +3,8 @@
 /Dockerfile.buildmany
 /Dockerfile.out
 
+/README.rst
+
 /.dockerignore
 /.git
 /.gitignore

@@ -1,35 +1,29 @@
 OSSO build of the maodbc.so MariaDB SQL ODBC Connector
 ======================================================
 
-Get source::
-
-    # Get source from https://downloads.mariadb.org/connector-odbc/
-    # and rename to maodbc_VERSION.orig.tar.gz; e.g.:
-    wget -O maodbc_3.1.5.orig.tar.gz \
-      https://downloads.mariadb.com/Connectors/odbc/connector-odbc-3.1.5/mariadb-connector-odbc-3.1.5-ga-src.tar.gz
-    # 3.1.5 has md5sum b59e048596cbd131f2d94c4cecbc2684
-
-    # Extract:
-    tar zxf maodbc_3.1.5.orig.tar.gz
-    cd mariadb-connector-odbc-3.1.5-ga-src
-
-Setup ``debian/`` dir::
-
-    git clone https://github.com/ossobv/maodbc-deb.git debian
-
-Optionally alter ``debian/changelog`` and then build::
-
-    dpkg-buildpackage -us -uc -sa
+*NOTE: This package is obsolete now that there is odbc-mariadb in vanilla
+Debian/Ubuntu.*
 
 
 Docker build
 ------------
 
-Or you can just do::
+Just do::
 
     ./Dockerfile.build
 
 And it will create the build files in ``Dockerfile.out/``.
+
+For example::
+
+    $ dpkg-deb -c Dockerfile.out/bullseye/maodbc_3.1.16-0osso0+deb11/libmaodbc_3.1.16-0osso0+deb11_amd64.deb
+     682,624  /usr/lib/x86_64-linux-gnu/odbc/libmaodbc.so
+       9,357  /usr/share/doc/libmaodbc/COPYING.gz
+         291  /usr/share/doc/libmaodbc/README
+         720  /usr/share/doc/libmaodbc/changelog.Debian.gz
+          96  /usr/share/libmaodbc/odbcinst.ini
+           0  /usr/lib/x86_64-linux-gnu/odbc/libmyodbc.so -> libmaodbc.so
+
 
 
 TODO

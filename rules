@@ -1,11 +1,26 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
 
-buildversion := $(shell sed -e '1!d;s/.*(//;s/).*//' debian/changelog)
-upversion := $(shell echo "$(buildversion)" | sed -e 's/-.*//')
+MARIADB_CONNECTOR_C := mariadb-connector-c-3.3.1-src.tar.gz
+MARIADB_CONNECTOR_C_MD5 := bd8090528becf9a788f78ed14bb90764
+MARIADB_CONNECTOR_C_URL := https://dlm.mariadb.com/2319728/Connectors/c/connector-c-3.3.1/$(MARIADB_CONNECTOR_C)
 
-MARIADB_CONNECTOR_C := mariadb-connector-c-$(upversion)-src.tar.gz
-MARIADB_CONNECTOR_C_MD5 := 6b2aae0738d3d5fed2aae272b6e8c19f
-MARIADB_CONNECTOR_C_URL := https://downloads.mariadb.com/Connectors/c/connector-c-$(upversion)/$(MARIADB_CONNECTOR_C)
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+# Uncomment this to change the hardening options
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+CMAKE = cmake
+CMAKE_JOBS =
+
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+        NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+        MAKEFLAGS += -j$(NUMJOBS)
+        CMAKE_JOBS += -j$(NUMJOBS)
+endif
+
+export MAKEFLAGS
 
 DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
@@ -44,15 +59,42 @@ libmariadb: mariadb-connector-c
 	# with MARIADB_* vars.
 	ln -s vendor/mariadb-connector-c libmariadb
 
+# CMAKE_BUILD_TYPE=RELWITHDEBINFO for debug symbols
+# CMAKE_INSTALL_PREFIX=/usr
+# CMAKE_INSTALL_COMPONENT=ODBCLibs to only install the static maodbc.so
+# DEB=1 for debian layout
+# CONC_WITH_UNIT_TESTS=OFF passed to connector-c, disabling unit tests
+# WITH_SSL=OPENSSL to force openssl
+# MARIADB_LINK_DYNAMIC=OFF to force static linking of libmariadb3
+# ALL_PLUGINS_STATIC=ON
 override_dh_auto_configure: libmariadb
-	dh_auto_configure
+	$(CMAKE) . \
+	    -DCMAKE_BUILD_TYPE=RELWITHDEBINFO \
+	    -DCMAKE_INSTALL_PREFIX=/usr \
+	    -DDEB=1 \
+	    -DCONC_WITH_UNIT_TESTS=OFF \
+	    -DWITH_SSL=OPENSSL \
+	    -DMARIADB_LINK_DYNAMIC=OFF \
+	    -DALL_PLUGINS_STATIC=ON
+
+override_dh_auto_build:
+	$(CMAKE) --build . --config RelWithDebInfo --verbose $(CMAKE_JOBS) --
 
 override_dh_auto_install:
-	dh_auto_install -- DESTDIR=$(CURDIR)/debian/tmp
-	mv $(CURDIR)/debian/tmp/usr/share/doc/mariadb-connector-odbc $(CURDIR)/debian/tmp/usr/share/doc/libmaodbc
-	mkdir -p $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/odbc
-	mv $(CURDIR)/debian/tmp/usr/lib/libmaodbc.so $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/odbc/
-	ln -s libmaodbc.so $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/odbc/libmyodbc.so
+	#dh_auto_install --
+	#make install DESTDIR=...
+	DESTDIR=$(CURDIR)/debian/libmaodbc \
+	    cmake -DCMAKE_INSTALL_COMPONENT=ODBCLibs -P cmake_install.cmake
+	DESTDIR=$(CURDIR)/debian/libmaodbc \
+	    cmake -DCMAKE_INSTALL_COMPONENT=Documentation -P cmake_install.cmake
+
+	mv $(CURDIR)/debian/libmaodbc/usr/share/doc/mariadb-connector-odbc \
+	    $(CURDIR)/debian/libmaodbc/usr/share/doc/libmaodbc
+	mkdir -p $(CURDIR)/debian/libmaodbc/usr/lib/$(DEB_HOST_MULTIARCH)/odbc
+	mv $(CURDIR)/debian/libmaodbc/usr/lib/$(DEB_HOST_MULTIARCH)/libmaodbc.so \
+	    $(CURDIR)/debian/libmaodbc/usr/lib/$(DEB_HOST_MULTIARCH)/odbc/
+	ln -s libmaodbc.so \
+	    $(CURDIR)/debian/libmaodbc/usr/lib/$(DEB_HOST_MULTIARCH)/odbc/libmyodbc.so
 
 override_dh_shlibdeps:
 	dh_shlibdeps -- -v

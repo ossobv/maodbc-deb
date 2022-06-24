@@ -1,4 +1,1 @@
-usr/lib/*/odbc/libmaodbc.so
-usr/lib/*/odbc/libmyodbc.so
-usr/share/doc/libmaodbc
-debian/odbcinst.ini		usr/share/libmaodbc
+debian/odbcinst.ini  usr/share/libmaodbc
