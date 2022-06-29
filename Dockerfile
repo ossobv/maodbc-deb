@@ -12,12 +12,18 @@ ARG DEBIAN_FRONTEND=noninteractive
 # cache. We do this before copying anything and before getting lots of
 # ARGs from the user. That keeps this bit cached.
 RUN echo 'APT::Install-Recommends "0";' >/etc/apt/apt.conf.d/01norecommends
-# We'll be ignoring "debconf: delaying package configuration, since apt-utils is not installed"
+# We'll be ignoring "debconf: delaying package configuration, since apt-utils
+#   is not installed"
 RUN apt-get update -q && \
     apt-get dist-upgrade -y && \
     apt-get install -y \
         ca-certificates curl \
-        build-essential devscripts dh-autoreconf dpkg-dev equivs quilt
+        build-essential devscripts dh-autoreconf dpkg-dev equivs quilt && \
+    printf "%s\n" \
+        QUILT_PATCHES=debian/patches QUILT_NO_DIFF_INDEX=1 \
+        QUILT_NO_DIFF_TIMESTAMPS=1 'QUILT_DIFF_OPTS="--show-c-function"' \
+        'QUILT_REFRESH_ARGS="-p ab --no-timestamps --no-index"' \
+        >~/.quiltrc
 
 # Apt-get prerequisites according to control file.
 COPY control /build/debian/control
@@ -44,14 +50,14 @@ RUN mkdir -p /build && \
     3.1.16) url=https://dlm.mariadb.com/2338586/Connectors/odbc/connector-odbc-3.1.16/mariadb-connector-odbc-3.1.16-src.tar.gz;; \
     *) url=https://downloads.mariadb.com/Connectors/odbc/connector-odbc-${upversion}/mariadb-connector-odbc-${upversion}-ga-src.tar.gz;; \
     esac && \
-    curl -fLsS -o /build/maodbc_${upversion}.orig.tar.gz "$url"
+    curl -fLsS -o /build/${upname}_${upversion}.orig.tar.gz "$url"
 RUN cd /build && \
-    mkdir maodbc-${upversion} && \
-    tar --strip-components=1 -C maodbc-${upversion} -zxf "maodbc_${upversion}.orig.tar.gz" && \
-    mkdir /build/maodbc-${upversion}/debian
-COPY . /build/maodbc-${upversion}/debian/
-RUN cp /build/debian/changelog /build/maodbc-${upversion}/debian/changelog
-WORKDIR /build/maodbc-${upversion}
+    mkdir ${upname}-${upversion} && \
+    tar --strip-components=1 -C ${upname}-${upversion} -zxf "${upname}_${upversion}.orig.tar.gz" && \
+    mkdir /build/${upname}-${upversion}/debian
+COPY . /build/${upname}-${upversion}/debian/
+RUN cp /build/debian/changelog /build/${upname}-${upversion}/debian/changelog
+WORKDIR /build/${upname}-${upversion}
 
 ###############################################################################
 # Build
